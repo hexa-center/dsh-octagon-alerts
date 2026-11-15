@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Sound alerts",
-    "description": "Plays a synthesized chime when a Session needs you: when it needs a choice, when it needs approval, and when a turn finishes while you are away. Each moment picks its own chime from eight presets (Knock, Bell, Soft descent, Arpeggio, Drop, Deep, Marimba, Pulse) with a Preview button and a 0–100% volume slider; the speaker button beside the Session title mutes every Session, and Settings → General also chooses whether finished turns chime only while you are elsewhere or on every turn. Each status change plays at most one chime, subagent Sessions stay silent, and nothing is sent over the network.",
+    "description": "Plays a synthesized chime when a Session needs you: when it needs a choice, when it needs approval, and when a turn finishes while you are away. Each moment picks its own chime from eight presets (Knock, Bell, Soft descent, Arpeggio, Drop, Deep, Marimba, Pulse) with a Preview button and a 0–200% volume slider; the speaker button beside the Session title mutes every Session, and Settings → General also chooses whether finished turns chime only while you are elsewhere or on every turn. Each status change plays at most one chime, subagent Sessions stay silent, and nothing is sent over the network.",
     "detail": "docs/DETAIL.md"
   }
 }

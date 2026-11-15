@@ -13,9 +13,9 @@ Session changes what it needs from you:
 Each moment picks its own chime: Settings → General has one picker per alert
 kind, offering eight synthesized presets (Knock, Bell, Soft descent, Arpeggio,
 Drop, Deep, Marimba, Pulse) with a **Preview** button and a **Volume** slider per
-row (0–100%, where 100% is already the loudest and 50% halves the loudness). The
-same preset can be shared across the three moments or all three can differ, and
-each moment can be quieter than the others.
+row (0–200%, where 100% is the default and 200% doubles it). The same preset can
+be shared across the three moments or all three can differ, and each moment can
+be quieter or louder than the others.
 
 A speaker toggle sits in the Session header utilities, beside the other header
 actions. It mutes every Session at once (the preference is stored in
@@ -50,9 +50,9 @@ works (`dsh plugin add /path/to/dsh-octagon-alerts`).
 `client.js` subscribes to `ctx.get('uiSession').sessionStatus` — the Browser-side
 Session status snapshot (`running`, `pendingInteraction`, `completionUnread`) —
 and diffs consecutive snapshots. Audio is synthesized with the Web Audio API,
-so no asset files or network requests are involved. A base gain of 2 is applied
-to every envelope, so the top of the volume slider is already loud enough in a
-quiet room. The audio graph is primed on
+so no asset files or network requests are involved. A base gain of 3 is applied
+to every envelope, so the default 100% is already 1.5× the original level and
+200% is another doubling on top of that. The audio graph is primed on
 the first click or keystroke, because browsers block audio until the page has
 been interacted with.
 

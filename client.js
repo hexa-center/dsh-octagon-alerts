@@ -42,7 +42,7 @@ window.__ModuleLoader__.load({
       'Completion chime': 'Completion chime',
       'Preview': 'Preview',
       'Volume': 'Volume',
-      'Volume 100% is the loudest; lower values make this chime quieter.': 'Volume 100% is the loudest; lower values make this chime quieter.',
+      'Volume 100% is the default level; 200% doubles it.': 'Volume 100% is the default level; 200% doubles it.',
       'Silent at 0% volume.': 'Silent at 0% volume.',
       'When a Session asks you to pick an option.': 'When a Session asks you to pick an option.',
       'When a Session asks for permission to run a tool.': 'When a Session asks for permission to run a tool.',
@@ -70,7 +70,7 @@ window.__ModuleLoader__.load({
       'Completion chime': '完成提示音',
       'Preview': '试听',
       'Volume': '音量',
-      'Volume 100% is the loudest; lower values make this chime quieter.': '音量 100% 最响，调低可以让这个提示音更轻。',
+      'Volume 100% is the default level; 200% doubles it.': '音量 100% 是默认电平，拉到 200% 会再翻一倍。',
       'Silent at 0% volume.': '音量为 0%，试听无声。',
       'When a Session asks you to pick an option.': '会话请你选择时。',
       'When a Session asks for permission to run a tool.': '会话请求授权时。',
@@ -93,16 +93,16 @@ window.__ModuleLoader__.load({
 
     /** Default chime preset per alert kind; the presets themselves live below. */
     const DEFAULT_CHIMES = Object.freeze({ approval: 'knock', question: 'bell', done: 'soft' });
-    /** Per-kind gain multiplier, 0..1: 1 is the plugin's loudest setting. */
+    /** Per-kind gain multiplier, 0..2: 1 is the default, 2 doubles it again. */
     const DEFAULT_VOLUMES = Object.freeze({ approval: 1, question: 1, done: 1 });
     const VOLUME_MIN = 0;
-    const VOLUME_MAX = 1;
+    const VOLUME_MAX = 2;
     /**
-     * The presets keep their original envelope levels; this base gain makes the
-     * top of the slider (100%) as loud as the old 200%, so a fresh install is
-     * clearly audible and the slider never needs to go above 100%.
+     * The presets keep their original envelope levels. With this base gain the
+     * default 100% is 1.5x the previous loudness and 200% doubles that again,
+     * so the slider only ever needs its full range for the loudest rooms.
      */
-    const BASE_GAIN = 2;
+    const BASE_GAIN = 3;
 
     function clampVolume(value, fallback) {
       const number = typeof value === 'number'
@@ -796,7 +796,7 @@ window.__ModuleLoader__.load({
       const label = tr(labelKey);
       const previewLabel = `${tr('Preview')}: ${label}`;
       const volumeLabel = `${tr('Volume')}: ${label}`;
-      const volumeHint = tr('Volume 100% is the loudest; lower values make this chime quieter.');
+      const volumeHint = tr('Volume 100% is the default level; 200% doubles it.');
       const sliderId = `sound-alerts-volume-${alertKind}`;
       const percent = Math.round(volume * 100);
       const silent = percent === 0;
