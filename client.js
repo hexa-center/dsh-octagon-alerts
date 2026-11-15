@@ -42,7 +42,7 @@ window.__ModuleLoader__.load({
       'Completion chime': 'Completion chime',
       'Preview': 'Preview',
       'Volume': 'Volume',
-      'Volume 100% is the default level; higher values boost the chime.': 'Volume 100% is the default level; higher values boost the chime.',
+      'Volume 100% is the loudest; lower values make this chime quieter.': 'Volume 100% is the loudest; lower values make this chime quieter.',
       'Silent at 0% volume.': 'Silent at 0% volume.',
       'When a Session asks you to pick an option.': 'When a Session asks you to pick an option.',
       'When a Session asks for permission to run a tool.': 'When a Session asks for permission to run a tool.',
@@ -70,7 +70,7 @@ window.__ModuleLoader__.load({
       'Completion chime': '完成提示音',
       'Preview': '试听',
       'Volume': '音量',
-      'Volume 100% is the default level; higher values boost the chime.': '音量 100% 是默认电平，调高会放大提示音。',
+      'Volume 100% is the loudest; lower values make this chime quieter.': '音量 100% 最响，调低可以让这个提示音更轻。',
       'Silent at 0% volume.': '音量为 0%，试听无声。',
       'When a Session asks you to pick an option.': '会话请你选择时。',
       'When a Session asks for permission to run a tool.': '会话请求授权时。',
@@ -93,10 +93,16 @@ window.__ModuleLoader__.load({
 
     /** Default chime preset per alert kind; the presets themselves live below. */
     const DEFAULT_CHIMES = Object.freeze({ approval: 'knock', question: 'bell', done: 'soft' });
-    /** Per-kind gain multiplier: 1 is the chime's own level, 2 is twice as loud. */
+    /** Per-kind gain multiplier, 0..1: 1 is the plugin's loudest setting. */
     const DEFAULT_VOLUMES = Object.freeze({ approval: 1, question: 1, done: 1 });
     const VOLUME_MIN = 0;
-    const VOLUME_MAX = 2;
+    const VOLUME_MAX = 1;
+    /**
+     * The presets keep their original envelope levels; this base gain makes the
+     * top of the slider (100%) as loud as the old 200%, so a fresh install is
+     * clearly audible and the slider never needs to go above 100%.
+     */
+    const BASE_GAIN = 2;
 
     function clampVolume(value, fallback) {
       const number = typeof value === 'number'
@@ -321,7 +327,7 @@ window.__ModuleLoader__.load({
     function startChime(voice, volume = 1) {
       const context = ensureAudioContext();
       if (!context) return false;
-      const peak = voice.level * clampVolume(volume, 1);
+      const peak = voice.level * BASE_GAIN * clampVolume(volume, 1);
       try {
         if (context.state === 'suspended') {
           Promise.resolve(context.resume?.()).catch(() => {});
@@ -376,8 +382,8 @@ window.__ModuleLoader__.load({
           Promise.resolve(context.resume?.()).catch(() => {});
         }
         const at = context.currentTime + 0.03;
-        scheduleNote(context, at, 880, 'sine', 0.28, 0.42);
-        scheduleNote(context, at, 1760, 'sine', 0.28, 0.08);
+        scheduleNote(context, at, 880, 'sine', 0.28, 0.42 * BASE_GAIN);
+        scheduleNote(context, at, 1760, 'sine', 0.28, 0.08 * BASE_GAIN);
         return true;
       } catch {
         return false;
@@ -790,7 +796,7 @@ window.__ModuleLoader__.load({
       const label = tr(labelKey);
       const previewLabel = `${tr('Preview')}: ${label}`;
       const volumeLabel = `${tr('Volume')}: ${label}`;
-      const volumeHint = tr('Volume 100% is the default level; higher values boost the chime.');
+      const volumeHint = tr('Volume 100% is the loudest; lower values make this chime quieter.');
       const sliderId = `sound-alerts-volume-${alertKind}`;
       const percent = Math.round(volume * 100);
       const silent = percent === 0;

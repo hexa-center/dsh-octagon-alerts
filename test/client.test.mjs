@@ -612,13 +612,13 @@ test('the chime rows list every preset, write the choice, and preview the curren
   assert.equal(volumeSlider.type, 'input');
   assert.equal(volumeSlider.props.type, 'range');
   assert.equal(volumeSlider.props.min, 0);
-  assert.equal(volumeSlider.props.max, 200, 'the slider can boost as well as reduce');
+  assert.equal(volumeSlider.props.max, 100, 'the top of the slider is 100%, already the loudest');
   assert.equal(volumeSlider.props.step, 5);
   assert.equal(volumeSlider.props.value, 100);
   assert.equal(volumeSlider.props['aria-label'], 'Volume: Approval chime');
   assert.equal(volumeSlider.props['aria-valuetext'], '100%');
   assert.equal(volumeSlider.props.id, 'sound-alerts-volume-approval');
-  assert.match(volumeSlider.props.title, /100% is the default level/, 'the slider explains the 100% baseline');
+  assert.match(volumeSlider.props.title, /100% is the loudest/, 'the slider explains the scale');
   assert.equal(volumeValue.children[0], '100%');
   const options = select.children.flat();
   assert.deepEqual(
@@ -640,7 +640,7 @@ test('the chime rows list every preset, write the choice, and preview the curren
   assert.equal(hook.volumes().approval, 0.5, 'the slider writes the per-kind volume');
   hook.resetGuard();
   const halfPeak = loudestPeak(() => preview.props.onClick());
-  assert.ok(Math.abs(halfPeak - 0.25) < 1e-9, `the preview honours the row volume (got ${halfPeak})`);
+  assert.ok(Math.abs(halfPeak - 0.5) < 1e-9, `the preview honours the row volume (got ${halfPeak})`);
   hook.resetGuard();
   hook.setChime('approval', 'knock');
   hook.setVolume('approval', 1);
@@ -660,21 +660,22 @@ test('lowering one kind scales its envelope and leaves the others alone', () => 
   hook.setVolume('question', 0.5);
   hook.resetGuard();
   const half = loudestPeak(() => hook.play('question', 'volume-half'));
-  assert.ok(Math.abs(full - 0.52) < 1e-9, `full volume keeps the preset level (got ${full})`);
-  assert.ok(Math.abs(half - 0.26) < 1e-9, `half volume halves the envelope peak (got ${half})`);
+  assert.ok(Math.abs(full - 1.04) < 1e-9, `100% doubles the raw preset envelope (got ${full})`);
+  assert.ok(Math.abs(half - 0.52) < 1e-9, `half volume halves the envelope peak (got ${half})`);
   assert.equal(hook.volumes().approval, 1, 'the approval volume is untouched');
   hook.setVolume('question', 1);
   harness.dispose();
 });
 
-test('a boosted volume reaches twice the preset level', () => {
+test('100% is the loudest and equals the old 200% loudness', () => {
   const harness = applyFresh();
   hook.resetGuard();
-  const full = loudestPeak(() => hook.play('done', 'volume-boost-full'));
-  hook.setVolume('done', 2);
+  const full = loudestPeak(() => hook.play('done', 'volume-max-full'));
+  assert.ok(Math.abs(full - 0.58 * 2) < 1e-9, `100% doubles the raw soft envelope (got ${full})`);
+  hook.setVolume('done', 0.5);
   hook.resetGuard();
-  const boosted = loudestPeak(() => hook.play('done', 'volume-boost-loud'));
-  assert.ok(Math.abs(boosted - full * 2) < 1e-9, `200% doubles the preset level (got ${boosted} vs ${full})`);
+  const half = loudestPeak(() => hook.play('done', 'volume-max-half'));
+  assert.ok(Math.abs(half - full / 2) < 1e-9, 'the slider still halves the loudness');
   hook.setVolume('done', 1);
   harness.dispose();
 });
@@ -695,10 +696,10 @@ test('volume zero still counts the alert but schedules silence', () => {
   harness.dispose();
 });
 
-test('volumes clamp to 0..200% and reject garbage', () => {
+test('volumes clamp to 0..100% and reject garbage', () => {
   const harness = applyFresh();
   hook.setVolume('done', 5);
-  assert.equal(hook.volumes().done, 2, 'above the ceiling clamps to 200%');
+  assert.equal(hook.volumes().done, 1, 'above the ceiling clamps to 100%');
   hook.setVolume('done', -3);
   assert.equal(hook.volumes().done, 0, 'below zero clamps to silence');
   hook.setVolume('done', 'loud');
@@ -717,7 +718,7 @@ test('a stored volume outside the range is clamped on load', () => {
   try {
     const stored = makeHarness();
     plugin.apply(stored.ctx);
-    assert.deepEqual(hook.volumes(), { approval: 0.4, question: 2, done: 1 }, 'valid values survive, out-of-range ones clamp');
+    assert.deepEqual(hook.volumes(), { approval: 0.4, question: 1, done: 1 }, 'valid values survive, out-of-range ones clamp');
     stored.dispose();
   } finally {
     delete globalThis.localStorage;
