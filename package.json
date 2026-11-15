@@ -1,7 +1,7 @@
 {
   "name": "dsh-octagon-alerts",
   "version": "0.1.0",
-  "description": "Synthesized chimes when a Session needs a choice, needs approval, or finishes while you are away.",
+  "description": "Session chimes for choice, approval and completion — a DeepSeek Harness client plugin with per-moment presets and volume.",
   "type": "module",
   "license": "MIT",
   "author": "hexa-center",

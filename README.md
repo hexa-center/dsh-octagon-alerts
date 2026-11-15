@@ -12,16 +12,18 @@ Session changes what it needs from you:
 
 Each moment picks its own chime: Settings → General has one picker per alert
 kind, offering eight synthesized presets (Knock, Bell, Soft descent, Arpeggio,
-Drop, Deep, Marimba, Pulse) with a **Preview** button per row. The same preset
-can be shared across the three moments or all three can differ.
+Drop, Deep, Marimba, Pulse) with a **Preview** button and a **Volume** slider per
+row (0–200%, where 100% is the preset's own level). The same preset can be
+shared across the three moments or all three can differ, and each moment can be
+quieter or louder than the others.
 
 A speaker toggle sits in the Session header utilities, beside the other header
 actions. It mutes every Session at once (the preference is stored in
 `localStorage` under `dsh:sound-alerts:settings:v1` and survives reloads);
 unmuting plays one confirmation note. Five rows in Settings → General mirror the
-preferences: a mute switch, the three chime pickers and the completion-chime
-timing. Subagent Sessions stay silent, and at most one chime plays per status
-change (approval > question > completion).
+preferences: a mute switch, the three chime rows (preset, volume, preview) and
+the completion-chime timing. Subagent Sessions stay silent, and at most one
+chime plays per status change (approval > question > completion).
 
 ## Install
 
@@ -75,7 +77,8 @@ The test stubs React, `AudioContext` and the Cordis context, then drives
 `uiSession.sessionStatus` through the real transitions (question, approval,
 watched vs. away completions, per-Session guard, mute, subagents, teardown) and
 asserts the chime pickers (per-kind preset resolution, unknown-id fallback,
-preview), the toggle's switch semantics and locale strings.
+preview), the per-kind volume (envelope scaling, clamping, inaudible at 0%), the
+toggle's switch semantics and locale strings.
 
 ## License
 

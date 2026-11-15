@@ -12,12 +12,15 @@ import assert from 'node:assert/strict';
 class FakeParam {
   constructor(value = 0) {
     this.value = value;
+    this.ramps = [];
   }
   setValueAtTime(value) {
     this.value = value;
     return this;
   }
-  exponentialRampToValueAtTime() {
+  exponentialRampToValueAtTime(value) {
+    this.value = value;
+    this.ramps.push(value);
     return this;
   }
   linearRampToValueAtTime() {
@@ -60,6 +63,7 @@ class FakeOscillator extends FakeNode {
 class FakeAudioContext {
   static instances = 0;
   static started = [];
+  static gains = [];
 
   constructor() {
     FakeAudioContext.instances += 1;
@@ -70,7 +74,9 @@ class FakeAudioContext {
     FakeAudioContext.lastStarted = this.started;
   }
   createGain() {
-    return new FakeNode();
+    const node = new FakeNode();
+    FakeAudioContext.gains.push(node);
+    return node;
   }
   createOscillator() {
     return new FakeOscillator(this);
@@ -182,6 +188,19 @@ function status(patch = {}) {
 
 function startedCount() {
   return FakeAudioContext.lastStarted?.length ?? 0;
+}
+
+/** Every envelope ramp target scheduled by `schedule` (boundaries, peaks and all). */
+function schedulePeaks(schedule) {
+  FakeAudioContext.gains.length = 0;
+  schedule();
+  return FakeAudioContext.gains.flatMap((node) => node.gain.ramps ?? []);
+}
+
+/** Loudest envelope peak scheduled by `schedule`, i.e. the chime level times its volume. */
+function loudestPeak(schedule) {
+  const peaks = schedulePeaks(schedule).filter((value) => value > 0.0002);
+  return peaks.length === 0 ? 0 : Math.max(...peaks);
 }
 
 function applyFresh() {
@@ -511,6 +530,7 @@ test('an older stored setting without chimes upgrades to the default presets', (
     assert.deepEqual(hook.chimes(), { approval: 'knock', question: 'bell', done: 'soft' }, 'missing presets fall back to the defaults');
     assert.equal(hook.settings().muted, true, 'the existing mute preference survives');
     assert.equal(hook.settings().doneMode, 'always', 'the existing timing preference survives');
+    assert.deepEqual(hook.volumes(), { approval: 1, question: 1, done: 1 }, 'missing volumes upgrade to full volume');
     legacy.dispose();
 
     globalThis.localStorage = {
@@ -582,9 +602,24 @@ test('the chime rows list every preset, write the choice, and preview the curren
   const [labelColumn, controls] = node.children;
   assert.equal(labelColumn.children[0].children[0], 'Approval chime');
   assert.equal(labelColumn.children[1].children[0], 'When a Session asks for permission to run a tool.');
-  const [select, preview] = controls.children;
+  const [select, volumeGroup, preview] = controls.children;
   assert.equal(select.type, 'select');
   assert.equal(select.props.value, 'knock');
+  const [volumeCaption, volumeSlider, volumeValue] = volumeGroup.children;
+  assert.equal(volumeCaption.type, 'label', 'the caption is a real label');
+  assert.equal(volumeCaption.children[0], 'Volume');
+  assert.equal(volumeCaption.props.htmlFor, 'sound-alerts-volume-approval', 'the label targets the slider');
+  assert.equal(volumeSlider.type, 'input');
+  assert.equal(volumeSlider.props.type, 'range');
+  assert.equal(volumeSlider.props.min, 0);
+  assert.equal(volumeSlider.props.max, 200, 'the slider can boost as well as reduce');
+  assert.equal(volumeSlider.props.step, 5);
+  assert.equal(volumeSlider.props.value, 100);
+  assert.equal(volumeSlider.props['aria-label'], 'Volume: Approval chime');
+  assert.equal(volumeSlider.props['aria-valuetext'], '100%');
+  assert.equal(volumeSlider.props.id, 'sound-alerts-volume-approval');
+  assert.match(volumeSlider.props.title, /100% is the default level/, 'the slider explains the 100% baseline');
+  assert.equal(volumeValue.children[0], '100%');
   const options = select.children.flat();
   assert.deepEqual(
     options.map((option) => option.props.value),
@@ -599,7 +634,105 @@ test('the chime rows list every preset, write the choice, and preview the curren
   const before = startedCount();
   preview.props.onClick();
   assert.ok(startedCount() > before, 'the preview button plays the selected preset');
+  select.props.onChange({ target: { value: 'knock' } });
+  assert.equal(hook.chimes().approval, 'knock', 'the picker can go back to the default preset');
+  volumeSlider.props.onChange({ target: { value: '50' } });
+  assert.equal(hook.volumes().approval, 0.5, 'the slider writes the per-kind volume');
+  hook.resetGuard();
+  const halfPeak = loudestPeak(() => preview.props.onClick());
+  assert.ok(Math.abs(halfPeak - 0.25) < 1e-9, `the preview honours the row volume (got ${halfPeak})`);
   hook.resetGuard();
   hook.setChime('approval', 'knock');
+  hook.setVolume('approval', 1);
+  harness.dispose();
+});
+
+test('every alert kind starts at full volume', () => {
+  applyFresh().dispose();
+  assert.deepEqual(hook.volumes(), { approval: 1, question: 1, done: 1 });
+});
+
+test('lowering one kind scales its envelope and leaves the others alone', () => {
+  const harness = applyFresh();
+  hook.setChime('question', 'bell');
+  hook.resetGuard();
+  const full = loudestPeak(() => hook.play('question', 'volume-full'));
+  hook.setVolume('question', 0.5);
+  hook.resetGuard();
+  const half = loudestPeak(() => hook.play('question', 'volume-half'));
+  assert.ok(Math.abs(full - 0.52) < 1e-9, `full volume keeps the preset level (got ${full})`);
+  assert.ok(Math.abs(half - 0.26) < 1e-9, `half volume halves the envelope peak (got ${half})`);
+  assert.equal(hook.volumes().approval, 1, 'the approval volume is untouched');
+  hook.setVolume('question', 1);
+  harness.dispose();
+});
+
+test('a boosted volume reaches twice the preset level', () => {
+  const harness = applyFresh();
+  hook.resetGuard();
+  const full = loudestPeak(() => hook.play('done', 'volume-boost-full'));
+  hook.setVolume('done', 2);
+  hook.resetGuard();
+  const boosted = loudestPeak(() => hook.play('done', 'volume-boost-loud'));
+  assert.ok(Math.abs(boosted - full * 2) < 1e-9, `200% doubles the preset level (got ${boosted} vs ${full})`);
+  hook.setVolume('done', 1);
+  harness.dispose();
+});
+
+test('volume zero still counts the alert but schedules silence', () => {
+  const harness = applyFresh();
+  hook.setVolume('approval', 0);
+  hook.resetGuard();
+  let played = null;
+  const peaks = schedulePeaks(() => {
+    played = hook.play('approval', 'volume-silent');
+  });
+  assert.equal(played, true, 'the alert is still delivered so the status diff stays observable');
+  assert.ok(peaks.length > 0, 'notes are still scheduled');
+  assert.ok(Math.max(...peaks) <= 0.0002, `every envelope stays inaudible (got ${Math.max(...peaks)})`);
+  assert.equal(hook.alerts.at(-1)?.sessionId, 'volume-silent');
+  hook.setVolume('approval', 1);
+  harness.dispose();
+});
+
+test('volumes clamp to 0..200% and reject garbage', () => {
+  const harness = applyFresh();
+  hook.setVolume('done', 5);
+  assert.equal(hook.volumes().done, 2, 'above the ceiling clamps to 200%');
+  hook.setVolume('done', -3);
+  assert.equal(hook.volumes().done, 0, 'below zero clamps to silence');
+  hook.setVolume('done', 'loud');
+  assert.equal(hook.volumes().done, 1, 'unreadable values fall back to full volume');
+  hook.setVolume('done', '0.5');
+  assert.equal(hook.volumes().done, 0.5, 'numeric strings are accepted');
+  hook.setVolume('done', 1);
+  harness.dispose();
+});
+
+test('a stored volume outside the range is clamped on load', () => {
+  globalThis.localStorage = {
+    getItem: () => JSON.stringify({ muted: false, doneMode: 'away', chimes: {}, volumes: { question: 5, approval: 0.4, done: 'x' } }),
+    setItem() {},
+  };
+  try {
+    const stored = makeHarness();
+    plugin.apply(stored.ctx);
+    assert.deepEqual(hook.volumes(), { approval: 0.4, question: 2, done: 1 }, 'valid values survive, out-of-range ones clamp');
+    stored.dispose();
+  } finally {
+    delete globalThis.localStorage;
+  }
+});
+
+test('a zero volume disables that row preview and explains why', () => {
+  const harness = applyFresh();
+  hook.setVolume('done', 0);
+  const entry = harness.registered.find((item) => item.entry.id === 'sound-alerts-done-chime');
+  const wrapper = entry.component(entry.entry);
+  const node = wrapper.type(wrapper.props);
+  const [, , preview] = node.children[1].children;
+  assert.equal(preview.props.disabled, true, 'a silent volume cannot be previewed');
+  assert.equal(preview.props.title, 'Silent at 0% volume.');
+  hook.setVolume('done', 1);
   harness.dispose();
 });

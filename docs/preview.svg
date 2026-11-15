@@ -13,8 +13,10 @@
     <rect x="100" y="170" width="8" height="14" rx="4" fill="#2f6fed" opacity="0.35"/>
     <rect x="116" y="162" width="8" height="22" rx="4" fill="#2f6fed" opacity="0.65"/>
     <rect x="132" y="152" width="8" height="32" rx="4" fill="#2f6fed"/>
-    <rect x="88" y="190" width="64" height="14" rx="7" fill="#f2f4f9" stroke="#e2e5ee"/>
-    <path d="M136 195l3 3 3-3" fill="none" stroke="#2f6fed" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="88" y="190" width="40" height="14" rx="7" fill="#f2f4f9" stroke="#e2e5ee"/>
+    <path d="M114 195l3 3 3-3" fill="none" stroke="#2f6fed" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="134" y="195" width="52" height="4" rx="2" fill="#e2e5ee"/>
+    <circle cx="160" cy="197" r="5" fill="#2f6fed"/>
   </g>
 
   <!-- approval: shield with check, even knocks -->
@@ -26,8 +28,10 @@
     <rect x="300" y="166" width="8" height="18" rx="4" fill="#7a5af8" opacity="0.55"/>
     <rect x="316" y="166" width="8" height="18" rx="4" fill="#7a5af8" opacity="0.85"/>
     <rect x="332" y="166" width="8" height="18" rx="4" fill="#7a5af8"/>
-    <rect x="288" y="190" width="64" height="14" rx="7" fill="#f2f4f9" stroke="#e2e5ee"/>
-    <path d="M336 195l3 3 3-3" fill="none" stroke="#7a5af8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="288" y="190" width="40" height="14" rx="7" fill="#f2f4f9" stroke="#e2e5ee"/>
+    <path d="M314 195l3 3 3-3" fill="none" stroke="#7a5af8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="334" y="195" width="52" height="4" rx="2" fill="#e2e5ee"/>
+    <circle cx="360" cy="197" r="5" fill="#7a5af8"/>
   </g>
 
   <!-- done: circle check, descending bars -->
@@ -39,8 +43,10 @@
     <rect x="500" y="152" width="8" height="32" rx="4" fill="#12a06a"/>
     <rect x="516" y="162" width="8" height="22" rx="4" fill="#12a06a" opacity="0.65"/>
     <rect x="532" y="170" width="8" height="14" rx="4" fill="#12a06a" opacity="0.35"/>
-    <rect x="488" y="190" width="64" height="14" rx="7" fill="#f2f4f9" stroke="#e2e5ee"/>
-    <path d="M536 195l3 3 3-3" fill="none" stroke="#12a06a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="488" y="190" width="40" height="14" rx="7" fill="#f2f4f9" stroke="#e2e5ee"/>
+    <path d="M514 195l3 3 3-3" fill="none" stroke="#12a06a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="534" y="195" width="52" height="4" rx="2" fill="#e2e5ee"/>
+    <circle cx="560" cy="197" r="5" fill="#12a06a"/>
   </g>
 
   <!-- header speaker toggle -->

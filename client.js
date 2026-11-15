@@ -41,6 +41,9 @@ window.__ModuleLoader__.load({
       'Approval chime': 'Approval chime',
       'Completion chime': 'Completion chime',
       'Preview': 'Preview',
+      'Volume': 'Volume',
+      'Volume 100% is the default level; higher values boost the chime.': 'Volume 100% is the default level; higher values boost the chime.',
+      'Silent at 0% volume.': 'Silent at 0% volume.',
       'When a Session asks you to pick an option.': 'When a Session asks you to pick an option.',
       'When a Session asks for permission to run a tool.': 'When a Session asks for permission to run a tool.',
       'When a turn finishes.': 'When a turn finishes.',
@@ -66,6 +69,9 @@ window.__ModuleLoader__.load({
       'Approval chime': '授权提示音',
       'Completion chime': '完成提示音',
       'Preview': '试听',
+      'Volume': '音量',
+      'Volume 100% is the default level; higher values boost the chime.': '音量 100% 是默认电平，调高会放大提示音。',
+      'Silent at 0% volume.': '音量为 0%，试听无声。',
       'When a Session asks you to pick an option.': '会话请你选择时。',
       'When a Session asks for permission to run a tool.': '会话请求授权时。',
       'When a turn finishes.': '回合结束时。',
@@ -87,11 +93,27 @@ window.__ModuleLoader__.load({
 
     /** Default chime preset per alert kind; the presets themselves live below. */
     const DEFAULT_CHIMES = Object.freeze({ approval: 'knock', question: 'bell', done: 'soft' });
+    /** Per-kind gain multiplier: 1 is the chime's own level, 2 is twice as loud. */
+    const DEFAULT_VOLUMES = Object.freeze({ approval: 1, question: 1, done: 1 });
+    const VOLUME_MIN = 0;
+    const VOLUME_MAX = 2;
+
+    function clampVolume(value, fallback) {
+      const number = typeof value === 'number'
+        ? value
+        : typeof value === 'string' && value.trim() !== ''
+          ? Number(value)
+          : Number.NaN;
+      if (!Number.isFinite(number)) return fallback;
+      const snapped = Math.round(number * 20) / 20;
+      return Math.min(VOLUME_MAX, Math.max(VOLUME_MIN, snapped));
+    }
 
     const DEFAULT_SETTINGS = Object.freeze({
       muted: false,
       doneMode: 'away',
       chimes: DEFAULT_CHIMES,
+      volumes: DEFAULT_VOLUMES,
     });
 
     function normalizeSettings(parsed) {
@@ -103,10 +125,16 @@ window.__ModuleLoader__.load({
           ? preset
           : DEFAULT_SETTINGS.chimes[kind];
       }
+      const chosenVolumes = parsed?.volumes && typeof parsed.volumes === 'object' ? parsed.volumes : {};
+      const volumes = {};
+      for (const kind of Object.keys(DEFAULT_VOLUMES)) {
+        volumes[kind] = clampVolume(chosenVolumes[kind], DEFAULT_VOLUMES[kind]);
+      }
       return {
         muted: parsed?.muted === true,
         doneMode: parsed?.doneMode === 'always' ? 'always' : 'away',
         chimes: Object.freeze(chimes),
+        volumes: Object.freeze(volumes),
       };
     }
 
@@ -126,6 +154,7 @@ window.__ModuleLoader__.load({
     function updateSettings(patch) {
       const merged = { ...settings, ...patch };
       if (patch?.chimes) merged.chimes = { ...settings.chimes, ...patch.chimes };
+      if (patch?.volumes) merged.volumes = { ...settings.volumes, ...patch.volumes };
       settings = Object.freeze(normalizeSettings(merged));
       try {
         globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -289,18 +318,19 @@ window.__ModuleLoader__.load({
       oscillator.stop(at + dur + 0.03);
     }
 
-    function startChime(voice) {
+    function startChime(voice, volume = 1) {
       const context = ensureAudioContext();
       if (!context) return false;
+      const peak = voice.level * clampVolume(volume, 1);
       try {
         if (context.state === 'suspended') {
           Promise.resolve(context.resume?.()).catch(() => {});
         }
         const startAt = context.currentTime + 0.03;
         for (const note of voice.notes) {
-          scheduleNote(context, startAt + note.at, note.freq, note.type, note.dur, voice.level);
+          scheduleNote(context, startAt + note.at, note.freq, note.type, note.dur, peak);
           for (const [multiple, amplitude] of note.partials ?? []) {
-            scheduleNote(context, startAt + note.at, note.freq * multiple, note.type, note.dur, voice.level * amplitude);
+            scheduleNote(context, startAt + note.at, note.freq * multiple, note.type, note.dur, peak * amplitude);
           }
         }
       } catch {
@@ -322,7 +352,8 @@ window.__ModuleLoader__.load({
       const now = Date.now();
       const guardKey = `${sessionId ?? ''}:${kind}`;
       if (now - (lastPlayed.get(guardKey) ?? 0) < REPEAT_GUARD_MS) return false;
-      if (!startChime(voice)) return false;
+      const volume = settings.volumes?.[kind] ?? 1;
+      if (!startChime(voice, volume)) return false;
       lastPlayed.set(guardKey, now);
       recentAlerts.push({ kind, sessionId: sessionId ?? null, at: now });
       if (recentAlerts.length > 50) recentAlerts.shift();
@@ -330,10 +361,10 @@ window.__ModuleLoader__.load({
     }
 
     /** The Settings "Preview" button: an explicit request, so mute and the guard do not apply. */
-    function previewChime(presetId) {
+    function previewChime(presetId, volume = 1) {
       const voice = CHIMES[presetId];
       if (!voice) return false;
-      return startChime(voice);
+      return startChime(voice, volume);
     }
 
     /** A soft single note, so unmuting proves the audio path works right away. */
@@ -596,13 +627,14 @@ window.__ModuleLoader__.load({
       display: 'flex',
       flexDirection: 'column',
       gap: 4,
+      flex: '1 1 240px',
       minWidth: 0,
     };
     const titleStyle = { fontSize: 13, lineHeight: '18px', color: 'var(--dsw-alias-label-primary)' };
     const descriptionStyle = { fontSize: 12, lineHeight: '16px', color: 'var(--dsw-alias-label-secondary)' };
     const selectStyle = {
       flex: '0 1 auto',
-      minWidth: 0,
+      minWidth: 88,
       maxWidth: '100%',
       height: 30,
       padding: '0 8px',
@@ -692,10 +724,10 @@ window.__ModuleLoader__.load({
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      flexWrap: 'wrap',
+      flexWrap: 'nowrap',
       gap: 8,
       minWidth: 0,
-      flexShrink: 1,
+      flex: '1 1 auto',
     };
     const previewButtonStyle = {
       flex: 'none',
@@ -713,12 +745,55 @@ window.__ModuleLoader__.load({
       appearance: 'none',
     };
 
+    const volumeGroupStyle = {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6,
+      flex: '0 1 auto',
+      minWidth: 0,
+    };
+
+    const volumeCaptionStyle = {
+      flex: 'none',
+      fontSize: 12,
+      color: 'var(--dsw-alias-label-secondary)',
+    };
+
+    const volumeSliderStyle = {
+      flex: '1 1 64px',
+      minWidth: 48,
+      maxWidth: 140,
+      height: 30,
+      margin: 0,
+      accentColor: 'var(--dsw-alias-brand-primary)',
+      outlineOffset: 2,
+      cursor: 'pointer',
+    };
+
+    const volumeValueStyle = {
+      flex: 'none',
+      minWidth: 34,
+      textAlign: 'right',
+      fontSize: 12,
+      fontVariantNumeric: 'tabular-nums',
+      color: 'var(--dsw-alias-label-secondary)',
+    };
+
     function ChimeRow({ alertKind, labelKey, descriptionKey, settingId }) {
       const [preset, setPreset] = React.useState(() => settings.chimes[alertKind] ?? DEFAULT_CHIMES[alertKind]);
+      const [volume, setVolume] = React.useState(() => settings.volumes?.[alertKind] ?? 1);
       const [hover, setHover] = React.useState(false);
-      React.useEffect(() => subscribeSettings(() => setPreset(settings.chimes[alertKind])), [alertKind]);
+      React.useEffect(() => subscribeSettings(() => {
+        setPreset(settings.chimes[alertKind]);
+        setVolume(settings.volumes?.[alertKind] ?? 1);
+      }), [alertKind]);
       const label = tr(labelKey);
       const previewLabel = `${tr('Preview')}: ${label}`;
+      const volumeLabel = `${tr('Volume')}: ${label}`;
+      const volumeHint = tr('Volume 100% is the default level; higher values boost the chime.');
+      const sliderId = `sound-alerts-volume-${alertKind}`;
+      const percent = Math.round(volume * 100);
+      const silent = percent === 0;
       return h('div', { style: rowStyle, 'data-sound-alerts-setting': settingId },
         h('div', { style: labelColumnStyle },
           h('span', { style: titleStyle }, label),
@@ -735,18 +810,48 @@ window.__ModuleLoader__.load({
               updateSettings({ chimes: { [alertKind]: CHIME_IDS.includes(value) ? value : DEFAULT_CHIMES[alertKind] } });
             },
           }, CHIME_IDS.map((id) => h('option', { key: id, value: id }, tr(CHIME_LABELS[id] ?? id)))),
+          h('div', { style: volumeGroupStyle },
+            h('label', { style: volumeCaptionStyle, htmlFor: sliderId }, tr('Volume')),
+            h('input', {
+              id: sliderId,
+              type: 'range',
+              min: 0,
+              max: VOLUME_MAX * 100,
+              step: 5,
+              value: percent,
+              'aria-label': volumeLabel,
+              'aria-valuetext': `${percent}%`,
+              title: volumeHint,
+              'data-sound-alerts-volume': alertKind,
+              style: volumeSliderStyle,
+              onChange: (event) => {
+                const next = Number(event.target.value) / 100;
+                updateSettings({ volumes: { [alertKind]: clampVolume(next, DEFAULT_VOLUMES[alertKind]) } });
+              },
+            }),
+            h('span', { style: volumeValueStyle, 'aria-hidden': 'true' }, `${percent}%`),
+          ),
           h('button', {
             type: 'button',
             className: 'dsa-preview',
             'aria-label': previewLabel,
-            title: previewLabel,
+            title: silent ? tr('Silent at 0% volume.') : previewLabel,
             'data-sound-alerts-preview': alertKind,
-            onClick: () => previewChime(settings.chimes[alertKind] ?? DEFAULT_CHIMES[alertKind]),
+            disabled: silent,
+            onClick: () => previewChime(
+              settings.chimes[alertKind] ?? DEFAULT_CHIMES[alertKind],
+              settings.volumes?.[alertKind] ?? 1,
+            ),
             onMouseEnter: () => setHover(true),
             onMouseLeave: () => setHover(false),
             onFocus: () => setHover(true),
             onBlur: () => setHover(false),
-            style: { ...previewButtonStyle, background: hover ? 'var(--dsw-alias-bg-overlay)' : 'transparent' },
+            style: {
+              ...previewButtonStyle,
+              background: hover && !silent ? 'var(--dsw-alias-bg-overlay)' : 'transparent',
+              opacity: silent ? 0.5 : 1,
+              cursor: silent ? 'default' : 'pointer',
+            },
           }, tr('Preview'))));
     }
 
@@ -842,6 +947,10 @@ window.__ModuleLoader__.load({
         setDoneMode: (mode) => updateSettings({ doneMode: mode === 'always' ? 'always' : 'away' }),
         setChime: (kind, preset) => updateSettings({ chimes: { [kind]: preset } }),
         chimes: () => ({ ...settings.chimes }),
+        setVolume: (kind, value) => updateSettings({ volumes: { [kind]: clampVolume(Number(value), DEFAULT_VOLUMES[kind]) } }),
+        volumes: () => ({ ...settings.volumes }),
+        previewAt: (preset, volume) => previewChime(preset, volume),
+        clampVolume,
         chimeIds: () => [...CHIME_IDS],
         preview: (preset) => previewChime(preset),
         resetGuard: () => lastPlayed.clear(),
