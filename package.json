@@ -1,0 +1,56 @@
+{
+  "name": "dsh-octagon-alerts",
+  "version": "0.1.0",
+  "description": "Synthesized chimes when a Session needs a choice, needs approval, or finishes while you are away.",
+  "type": "module",
+  "license": "MIT",
+  "author": "hexa-center",
+  "homepage": "https://github.com/hexa-center/dsh-octagon-alerts#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hexa-center/dsh-octagon-alerts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hexa-center/dsh-octagon-alerts/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "sound",
+    "notification",
+    "audio-alert"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "docs",
+    "icon.svg",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
