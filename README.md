@@ -45,6 +45,24 @@ Once the catalog entry is live, Plugin Manager → Plugin Market lists it as
 `dsh-octagon-alerts` under Notifications. Installing from a local checkout also
 works (`dsh plugin add /path/to/dsh-octagon-alerts`).
 
+### Slow or blocked GitHub
+
+A profile dependency that points at a remote `.tgz` URL is re-resolved with an
+HTTP `HEAD` on every install, and DSH runs that install while it boots. Where
+`release-assets.githubusercontent.com` is resettable (mainland China, for one),
+that `HEAD` turns into a 10s + 60s retry cycle and a slow or failed start.
+
+Install the same archive from a local file instead — it pins the tarball by
+path, so startup never touches the network:
+
+```
+curl -LO https://github.com/hexa-center/dsh-octagon-alerts/releases/latest/download/dsh-octagon-alerts.tgz
+dsh plugin add ./dsh-octagon-alerts.tgz
+```
+
+Swap the file and reinstall to update. Keep the file where you put it: the
+profile references that exact path.
+
 ## How it works
 
 `client.js` subscribes to `ctx.get('uiSession').sessionStatus` — the Browser-side
