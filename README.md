@@ -27,8 +27,13 @@ chime plays per status change (approval > question > completion).
 
 ## Install
 
-No npm package is required — the plugin ships as a single prebuilt archive and as
-plain source files:
+Install from npm (fastest, served by the registry CDN):
+
+```
+dsh plugin add @octagon-teams/dsh-octagon-alerts
+```
+
+Or straight from the repository, no registry involved:
 
 ```
 dsh plugin add github:hexa-center/dsh-octagon-alerts
