@@ -95,7 +95,7 @@ await import('../client.js');
 
 const definition = globalThis.__capturedModule;
 assert.ok(definition, 'the client module registers itself through __ModuleLoader__');
-assert.equal(definition.id, 'dsh-octagon-alerts');
+assert.equal(definition.id, '@octagon-teams/dsh-octagon-alerts');
 
 /* The fake React keeps element trees so the toggle can be asserted on. */
 const fakeReact = {

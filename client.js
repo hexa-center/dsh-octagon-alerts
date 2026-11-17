@@ -22,7 +22,7 @@
  */
 
 window.__ModuleLoader__.load({
-  id: 'dsh-octagon-alerts',
+  id: '@octagon-teams/dsh-octagon-alerts',
   factory(require) {
     const React = require('react');
     const h = React.createElement;

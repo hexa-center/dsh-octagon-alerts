@@ -1,6 +1,6 @@
 {
   "name": "@octagon-teams/dsh-octagon-alerts",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Session chimes for choice, approval and completion — a DeepSeek Harness client plugin with per-moment presets and volume.",
   "type": "module",
   "license": "MIT",
