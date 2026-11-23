@@ -459,17 +459,34 @@ window.__ModuleLoader__.load({
       return alerts;
     }
 
-    function safeGet(ctx, name) {
+    /**
+     * Read one Client service. Injected services resolve as context properties; the
+     * `ctx.get(name)` lookup is the pre-0.2.3 fallback for the same names.
+     */
+    function runtimeService(ctx, name) {
       try {
-        return ctx.get(name);
+        const direct = ctx[name];
+        if (direct !== undefined) return direct;
+      } catch {
+        /* not injected on this context */
+      }
+      try {
+        return ctx.get?.(name);
       } catch {
         return undefined;
       }
     }
 
     function startStatusEngine(ctx) {
-      const uiSession = safeGet(ctx, 'uiSession');
-      const observable = uiSession?.sessionStatus;
+      // `uiSession.sessionStatus` is its own injected service since the Session status
+      // split, so the property read must stay inside the inject-guarded context.
+      const uiSession = runtimeService(ctx, 'uiSession');
+      let observable;
+      try {
+        observable = uiSession?.sessionStatus;
+      } catch {
+        observable = undefined;
+      }
       if (!observable || typeof observable.subscribe !== 'function') {
         // `uiSession` is in this module's inject list, so this only happens when
         // the Client half is loaded without the Session UI: keep the toggle and
@@ -481,7 +498,7 @@ window.__ModuleLoader__.load({
         }
         return () => {};
       }
-      const sessions = safeGet(ctx, 'sessions');
+      const sessions = runtimeService(ctx, 'sessions');
       const summaryOf = (sessionId) => {
         try {
           return sessions?.list?.getSnapshot?.()?.byId?.[sessionId];
@@ -880,7 +897,7 @@ window.__ModuleLoader__.load({
     /* --------------------------------- apply -------------------------------- */
 
     function apply(ctx) {
-      const locale = safeGet(ctx, 'locale');
+      const locale = runtimeService(ctx, 'locale');
       if (locale && typeof locale.register === 'function') {
         ctx.effect(() => {
           const disposers = [];
@@ -967,7 +984,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'uiSession', 'sessions'],
+      inject: ['slots', 'locale', 'uiSession', 'uiSession.sessionStatus', 'sessions'],
       apply,
     };
   },

@@ -113,13 +113,13 @@ const hook = globalThis.__dshSoundAlertsTest;
 assert.ok(hook, 'the test hook is exposed only under the test flag');
 assert.deepEqual(
   [...plugin.inject].sort(),
-  ['locale', 'sessions', 'slots', 'uiSession'],
-  'the client half declares the Session services it reads',
+  ['locale', 'sessions', 'slots', 'uiSession', 'uiSession.sessionStatus'],
+  'the client half declares the Session services it reads, including the status table',
 );
 
 /* -------------------------------- harness ---------------------------------- */
 
-function makeHarness() {
+function makeHarness({ legacyGet = false } = {}) {
   let listener = null;
   let snapshot = new Map();
   const byId = {};
@@ -142,7 +142,7 @@ function makeHarness() {
   };
   const effects = [];
   const ctx = {
-    get: (name) => services[name],
+    ...(legacyGet ? { get: (name) => services[name] } : services),
     effect(fn) {
       const dispose = fn();
       effects.push(dispose);
@@ -211,6 +211,17 @@ function applyFresh() {
 }
 
 /* ---------------------------------- tests ---------------------------------- */
+
+test('also resolves services on a client runtime that only offers ctx.get', () => {
+  const harness = makeHarness({ legacyGet: true });
+  hook.resetGuard();
+  plugin.apply(harness.ctx);
+  assert.equal(harness.listening, true, 'the older lookup path still reaches uiSession.sessionStatus');
+  const before = startedCount();
+  harness.publish(new Map([['s1', status({ pendingInteraction: { kind: 'approval', key: 'approval:1' } })]]));
+  assert.ok(startedCount() > before, 'the approval chime scheduled its oscillators');
+  harness.dispose();
+});
 
 test('subscribes to session status and rings nothing for the baseline', () => {
   const harness = applyFresh();

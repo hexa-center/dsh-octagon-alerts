@@ -25,6 +25,12 @@ preferences: a mute switch, the three chime rows (preset, volume, preview) and
 the completion-chime timing. Subagent Sessions stay silent, and at most one
 chime plays per status change (approval > question > completion).
 
+## Requirements
+
+DSH 0.2.3 or newer (`engines.dsh`). In 0.2.3 the Session status table became
+its own Client service, `uiSession.sessionStatus`; on older releases the client
+half stays unloaded instead of guessing at the moved API.
+
 ## Install
 
 Install from npm (fastest, served by the registry CDN):
@@ -70,8 +76,9 @@ profile references that exact path.
 
 ## How it works
 
-`client.js` subscribes to `ctx.get('uiSession').sessionStatus` — the Browser-side
-Session status snapshot (`running`, `pendingInteraction`, `completionUnread`) —
+`client.js` subscribes to `ctx.uiSession.sessionStatus` — the Browser-side
+Session status snapshot (`running`, `pendingInteraction`, `completionUnread`),
+injected as its own service since DSH 0.2.3 —
 and diffs consecutive snapshots. Audio is synthesized with the Web Audio API,
 so no asset files or network requests are involved. A base gain of 3 is applied
 to every envelope, so the default 100% is already 1.5× the original level and
